@@ -67,7 +67,7 @@ impl LLamaParams<f32> {
         let n_layers = config.num_hidden_layers;
         
         Self {
-            embedding_table: f32::get_tensor_from(safetensor, "lm_head.weight").unwrap(),
+            embedding_table,
             rms_att_w: get_tensor_vec!(safetensor, "model.layers.{}.input_layernorm.weight", n_layers),
             wq: get_tensor_vec!(safetensor, "model.layers.{}.self_attn.q_proj.weight", n_layers),
             wk: get_tensor_vec!(safetensor, "model.layers.{}.self_attn.k_proj.weight", n_layers),

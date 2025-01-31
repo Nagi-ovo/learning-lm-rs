@@ -7,8 +7,9 @@ use crate::operators as OP;
 use crate::params::LLamaParams;
 use crate::tensor::Tensor;
 use safetensors::SafeTensors;
+use num_traits::Num;
 use std::path::Path;
-pub struct Llama<T> {
+pub struct Llama<T: Num> {
     vocab: usize,           // vocab size
     n_layers: usize,        // number of layers
     n_q_h: usize,           // number of heads for q

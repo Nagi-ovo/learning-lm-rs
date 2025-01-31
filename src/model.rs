@@ -180,7 +180,7 @@ fn mlp(
     // 4. act = gate * sigmoid(gate) * up (SwiGLU)
     OP::swiglu(up, gate);
     
-    // 5. output = act @ down_weight.T (storing result in hidden_states)
+    // 5. residual = residual + up @ down_weight.T
     OP::matmul_transb(residual, 1f32, up, w_down, 1f32);
 }
 

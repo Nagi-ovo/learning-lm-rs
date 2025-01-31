@@ -167,7 +167,20 @@ fn mlp(
     rms_w: &Tensor<f32>,
     eps: f32,
 ) {
-    todo!("Implement mlp");
+    // 1. hidden = rms_norm(residual)
+    OP::rms_norm(hidden_states, residual, rms_w, eps);
+    
+    // 2. gate = hidden @ gate_weight.T
+    OP::matmul_transb(gate, 0f32, hidden_states, w_gate, 1f32);
+    
+    // 3. up = hidden @ up_weight.T
+    OP::matmul_transb(up, 0f32, hidden_states, w_up, 1f32);
+    
+    // 4. act = gate * sigmoid(gate) * up (SwiGLU)
+    OP::swiglu(up, gate);
+    
+    // 5. output = act @ down_weight.T (storing result in hidden_states)
+    OP::matmul_transb(residual, 1f32, up, w_down, 1f32);
 }
 
 #[test]

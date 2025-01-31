@@ -32,15 +32,16 @@ impl GetTensorFromSafeTensors<f32> for f32 {
             assert!(matches!(e, safetensors::SafeTensorError::TensorNotFound(_)));
             "Tensor not found"
         })?;
-        
+
         let data = match tensor_view.dtype() {
-            safetensors::Dtype::F32 => tensor_view.data()
+            safetensors::Dtype::F32 => tensor_view
+                .data()
                 .chunks_exact(4)
                 .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
                 .collect(),
             _ => return Err("Unsupported data type"),
         };
-        
+
         Ok(Tensor::new(data, &tensor_view.shape().to_vec()))
     }
 }
@@ -65,15 +66,39 @@ impl LLamaParams<f32> {
         };
 
         let n_layers = config.num_hidden_layers;
-        
+
         Self {
             embedding_table,
-            rms_att_w: get_tensor_vec!(safetensor, "model.layers.{}.input_layernorm.weight", n_layers),
-            wq: get_tensor_vec!(safetensor, "model.layers.{}.self_attn.q_proj.weight", n_layers),
-            wk: get_tensor_vec!(safetensor, "model.layers.{}.self_attn.k_proj.weight", n_layers),
-            wv: get_tensor_vec!(safetensor, "model.layers.{}.self_attn.v_proj.weight", n_layers),
-            wo: get_tensor_vec!(safetensor, "model.layers.{}.self_attn.o_proj.weight", n_layers),
-            rms_ffn_w: get_tensor_vec!(safetensor, "model.layers.{}.post_attention_layernorm.weight", n_layers),
+            rms_att_w: get_tensor_vec!(
+                safetensor,
+                "model.layers.{}.input_layernorm.weight",
+                n_layers
+            ),
+            wq: get_tensor_vec!(
+                safetensor,
+                "model.layers.{}.self_attn.q_proj.weight",
+                n_layers
+            ),
+            wk: get_tensor_vec!(
+                safetensor,
+                "model.layers.{}.self_attn.k_proj.weight",
+                n_layers
+            ),
+            wv: get_tensor_vec!(
+                safetensor,
+                "model.layers.{}.self_attn.v_proj.weight",
+                n_layers
+            ),
+            wo: get_tensor_vec!(
+                safetensor,
+                "model.layers.{}.self_attn.o_proj.weight",
+                n_layers
+            ),
+            rms_ffn_w: get_tensor_vec!(
+                safetensor,
+                "model.layers.{}.post_attention_layernorm.weight",
+                n_layers
+            ),
             w_up: get_tensor_vec!(safetensor, "model.layers.{}.mlp.up_proj.weight", n_layers),
             w_gate: get_tensor_vec!(safetensor, "model.layers.{}.mlp.gate_proj.weight", n_layers),
             w_down: get_tensor_vec!(safetensor, "model.layers.{}.mlp.down_proj.weight", n_layers),

@@ -6,8 +6,8 @@ use crate::kvcache::KVCache;
 use crate::operators as OP;
 use crate::params::LLamaParams;
 use crate::tensor::Tensor;
-use safetensors::SafeTensors;
 use num_traits::Num;
+use safetensors::SafeTensors;
 use std::path::Path;
 pub struct Llama<T: Num> {
     vocab: usize,           // vocab size
@@ -133,11 +133,11 @@ impl Llama<f32> {
         top_p: f32,
         top_k: u32,
         temperature: f32,
-    ) -> Vec<u32>{
+    ) -> Vec<u32> {
         let mut result = Vec::<u32>::new();
-        
+
         todo!("实现文本生成");
-        
+
         result
     }
 }
@@ -170,16 +170,16 @@ fn mlp(
 ) {
     // 1. hidden = rms_norm(residual)
     OP::rms_norm(hidden_states, residual, rms_w, eps);
-    
+
     // 2. gate = hidden @ gate_weight.T
     OP::matmul_transb(gate, 0f32, hidden_states, w_gate, 1f32);
-    
+
     // 3. up = hidden @ up_weight.T
     OP::matmul_transb(up, 0f32, hidden_states, w_up, 1f32);
-    
+
     // 4. act = gate * sigmoid(gate) * up (SwiGLU)
     OP::swiglu(up, gate);
-    
+
     // 5. residual = residual + up @ down_weight.T
     OP::matmul_transb(residual, 1f32, up, w_down, 1f32);
 }
@@ -224,8 +224,8 @@ pub fn test_mlp() {
 
 #[test]
 pub fn test_load_safetensors() {
-    use std::path::PathBuf;
     use crate::tensor::float_eq;
+    use std::path::PathBuf;
     let project_dir = env!("CARGO_MANIFEST_DIR");
     let model_dir = PathBuf::from(project_dir).join("models").join("story");
     let model = Llama::from_safetensors(model_dir);
@@ -237,17 +237,55 @@ pub fn test_load_safetensors() {
     assert_eq!(model.dqkv, 16);
     assert_eq!(model.di, 384);
 
-    assert!(float_eq(&model.params.embedding_table.data()[50], &0.14453125, 1e-6));
-    assert_eq!(model.params.lm_head.data()[10], model.params.embedding_table.data()[10]);
-    assert!(float_eq(&model.params.rms_att_w[0].data()[10], &0.18652344, 1e-6));
-    assert!(float_eq(&model.params.rms_ffn_w[1].data()[10], &0.32421875, 1e-6));
-    assert!(float_eq(&model.params.rms_out_w.data()[100], &0.73046875, 1e-6));
-    assert!(float_eq(&model.params.w_down[0].data()[100], &-0.0625, 1e-6));
+    assert!(float_eq(
+        &model.params.embedding_table.data()[50],
+        &0.14453125,
+        1e-6
+    ));
+    assert_eq!(
+        model.params.lm_head.data()[10],
+        model.params.embedding_table.data()[10]
+    );
+    assert!(float_eq(
+        &model.params.rms_att_w[0].data()[10],
+        &0.18652344,
+        1e-6
+    ));
+    assert!(float_eq(
+        &model.params.rms_ffn_w[1].data()[10],
+        &0.32421875,
+        1e-6
+    ));
+    assert!(float_eq(
+        &model.params.rms_out_w.data()[100],
+        &0.73046875,
+        1e-6
+    ));
+    assert!(float_eq(
+        &model.params.w_down[0].data()[100],
+        &-0.0625,
+        1e-6
+    ));
     assert!(float_eq(&model.params.w_up[0].data()[100], &1.46875, 1e-6));
-    assert!(float_eq(&model.params.w_gate[1].data()[100], &0.296875, 1e-6));
-    assert!(float_eq(&model.params.wq[1].data()[100], &0.032226563, 1e-6));
-    assert!(float_eq(&model.params.wk[1].data()[100], &-0.21386719, 1e-6));
-    assert!(float_eq(&model.params.wv[0].data()[100], &0.041015625, 1e-6));
+    assert!(float_eq(
+        &model.params.w_gate[1].data()[100],
+        &0.296875,
+        1e-6
+    ));
+    assert!(float_eq(
+        &model.params.wq[1].data()[100],
+        &0.032226563,
+        1e-6
+    ));
+    assert!(float_eq(
+        &model.params.wk[1].data()[100],
+        &-0.21386719,
+        1e-6
+    ));
+    assert!(float_eq(
+        &model.params.wv[0].data()[100],
+        &0.041015625,
+        1e-6
+    ));
     assert!(float_eq(&model.params.wo[0].data()[100], &0.01965332, 1e-6));
-
 }

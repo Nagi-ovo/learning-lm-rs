@@ -73,11 +73,11 @@ pub fn masked_softmax(y: &mut Tensor<f32>) {
 pub fn rms_norm(y: &mut Tensor<f32>, x: &Tensor<f32>, w: &Tensor<f32>, epsilon: f32) {
     let shape = x.shape();
     assert!(shape == y.shape());
-    let feature_dim = shape[shape.len() - 1];  // d in mathematical notation
-    
+    let feature_dim = shape[shape.len() - 1]; // d in mathematical notation
+
     // Calculate number of feature vectors to process
-    let num_features = shape[0..shape.len()-1].iter().product();
-    
+    let num_features = shape[0..shape.len() - 1].iter().product();
+
     let _y = unsafe { y.data_mut() };
     let _x = x.data();
     let _w = w.data();
@@ -85,7 +85,7 @@ pub fn rms_norm(y: &mut Tensor<f32>, x: &Tensor<f32>, w: &Tensor<f32>, epsilon: 
     // Process each feature vector independently
     for i in 0..num_features {
         let offset = i * feature_dim;
-        
+
         // 1. Calculate Σ(x_i²)
         let sum_squares: f32 = (0..feature_dim)
             .map(|j| {
@@ -93,10 +93,10 @@ pub fn rms_norm(y: &mut Tensor<f32>, x: &Tensor<f32>, w: &Tensor<f32>, epsilon: 
                 x_ij * x_ij
             })
             .sum();
-            
+
         // 2. Calculate RMS(x) = sqrt(1/d * Σ(x_i²) + ε)
         let rms = f32::sqrt(sum_squares / feature_dim as f32 + epsilon);
-        
+
         // 3. Apply normalization and scaling: y_i = (w_i * x_i) / RMS(x)
         for j in 0..feature_dim {
             let idx = offset + j;
@@ -139,20 +139,16 @@ pub fn matmul_transb(c: &mut Tensor<f32>, beta: f32, a: &Tensor<f32>, b: &Tensor
     for x in 0..a_rows {
         // get current row of A
         let a_row = &_a[x * inner..(x + 1) * inner];
-        
+
         for y in 0..b_rows {
             // get current row of B (equivalent to column of B^T)
             let b_row = &_b[y * inner..(y + 1) * inner];
-            
-            let sum: f32 = a_row.iter()
-                .zip(b_row.iter())
-                .map(|(&a, &b)| a * b)
-                .sum();
+
+            let sum: f32 = a_row.iter().zip(b_row.iter()).map(|(&a, &b)| a * b).sum();
 
             _c[x * b_rows + y] += alpha * sum;
         }
     }
-    
 }
 
 // Dot product of two tensors (treated as vectors)

@@ -105,9 +105,9 @@ impl Llama<f32> {
             self_attention(
                 &mut hidden_states,
                 &mut att_scores,
-                &q,
-                &k,
-                &v,
+                q,
+                full_k,
+                full_v,
                 self.n_kv_h,
                 n_groups,
                 seq_len,

@@ -72,7 +72,7 @@ pub fn masked_softmax(y: &mut Tensor<f32>) {
 
 pub fn rms_norm(y: &mut Tensor<f32>, x: &Tensor<f32>, w: &Tensor<f32>, epsilon: f32) {
     let shape = x.shape();
-    assert!(shape == y.shape());
+    assert!(y.size() == x.size());
     let feature_dim = shape[shape.len() - 1]; // d in mathematical notation
 
     // Calculate number of feature vectors to process

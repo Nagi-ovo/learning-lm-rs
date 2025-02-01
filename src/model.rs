@@ -102,10 +102,40 @@ impl Llama<f32> {
             let full_k = &mut cache.k_cache(layer, 0); // (total_seq, n_kv_h * dqkv)
             let full_v = &mut cache.v_cache(layer, 0); // (total_seq, n_kv_h * dqkv)
 
-            todo!("self_attention(...)");
-            todo!("down_proj matmul and add residual");
+            self_attention(
+                &mut hidden_states,
+                &mut att_scores,
+                &q,
+                &k,
+                &v,
+                self.n_kv_h,
+                n_groups,
+                seq_len,
+                total_seq_len,
+                self.dqkv,
+            );
 
-            todo!("mlp(...)");
+            // down_proj matmul and add residual
+            OP::matmul_transb(
+                &mut residual,
+                1.0,
+                &hidden_states,
+                &self.params.wo[layer],
+                1.0,
+            );
+
+            // FFN
+            mlp(
+                &mut residual,
+                &mut hidden_states,
+                &mut gate_buf,
+                &mut up_buf,
+                &self.params.w_up[layer],
+                &self.params.w_down[layer],
+                &self.params.w_gate[layer],
+                &self.params.rms_ffn_w[layer],
+                self.eps,
+            );
         }
 
         // No matter what seq_len, the output is always a 1D vector of length vocab,
@@ -134,9 +164,38 @@ impl Llama<f32> {
         top_k: u32,
         temperature: f32,
     ) -> Vec<u32> {
-        let mut result = Vec::<u32>::new();
+        let max_len = max_len.min(self.max_seq_len - token_ids.len());
+        assert!(max_len > 0);
 
-        todo!("实现文本生成");
+        let mut result = Vec::<u32>::new();
+        // create new cache
+        let mut cache = self.new_cache();
+
+        // prepare input, ensure start with BOS token
+        let mut tokens = Vec::from(token_ids);
+        if tokens[0] != self.bos_token_id {
+            tokens.insert(0, self.bos_token_id);
+        }
+
+        // first forward pass using full input
+        let mut input = Tensor::<u32>::new(tokens, &vec![1, token_ids.len()]);
+
+        // generate loop
+        loop {
+            // forward pass using cache to reuse previous K,V
+            let logits = self.forward(&input, &mut cache);
+            // sample next token
+            let next_token = OP::random_sample(&logits, top_p, top_k, temperature);
+            result.push(next_token);
+
+            // check termination condition
+            if result.len() >= max_len || next_token == self.eos_token_id {
+                break;
+            }
+
+            // next round only input new generated token
+            input = Tensor::<u32>::new(vec![next_token], &vec![1]);
+        }
 
         result
     }
@@ -211,16 +270,16 @@ fn mlp(
     OP::rms_norm(hidden_states, residual, rms_w, eps);
 
     // 2. gate = hidden @ gate_weight.T
-    OP::matmul_transb(gate, 0f32, hidden_states, w_gate, 1f32);
+    OP::matmul_transb(gate, 0., hidden_states, w_gate, 1.0);
 
     // 3. up = hidden @ up_weight.T
-    OP::matmul_transb(up, 0f32, hidden_states, w_up, 1f32);
+    OP::matmul_transb(up, 0., hidden_states, w_up, 1.0);
 
     // 4. act = gate * sigmoid(gate) * up (SwiGLU)
     OP::swiglu(up, gate);
 
     // 5. residual = residual + up @ down_weight.T
-    OP::matmul_transb(residual, 1f32, up, w_down, 1f32);
+    OP::matmul_transb(residual, 1.0, up, w_down, 1.0);
 }
 
 #[test]

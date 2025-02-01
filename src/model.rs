@@ -154,7 +154,46 @@ fn self_attention(
     total_seq_len: usize,
     dqkv: usize,
 ) {
-    todo!("Implement self_attention");
+    assert!(k.shape()[0] >= total_seq_len && v.shape()[0] >= total_seq_len);
+    assert!(q.shape()[0] == seq_len && q.shape()[1] == n_kv_h * n_groups && q.shape()[2] == dqkv);
+    let _a = unsafe { att_scores.data_mut() };
+    let _q = q.data();
+    let _k = k.data();
+    let _v = v.data();
+    let sqrt = (dqkv as f32).sqrt();
+
+    // attn_score = Q @ K^T / sqrt(dim)
+    for q in 0..n_kv_h * n_groups {
+        for seq in 0..seq_len {
+            for t_seq in 0..total_seq_len {
+                let mut sum = 0.0;
+                for d in 0..dqkv {
+                    sum += _q[seq * n_kv_h * n_groups * dqkv + q * dqkv + d]
+                        * _k[t_seq * n_kv_h * dqkv + q / n_groups * dqkv + d];
+                }
+                _a[q * seq_len * total_seq_len + seq * total_seq_len + t_seq] = sum / sqrt;
+            }
+        }
+    }
+
+    // attn = softmax(score)
+    OP::masked_softmax(att_scores);
+
+    // x = attn @ V
+    let _a = att_scores.data();
+    let _h = unsafe { hidden_states.data_mut() };
+    for q in 0..n_kv_h * n_groups {
+        for seq in 0..seq_len {
+            for d in 0..dqkv {
+                let mut sum = 0.0;
+                for t_seq in 0..total_seq_len {
+                    sum += _a[q * seq_len * total_seq_len + seq * total_seq_len + t_seq]
+                        * _v[d + q / n_groups * dqkv + t_seq * n_kv_h * dqkv];
+                }
+                _h[seq * n_kv_h * n_groups * dqkv + q * dqkv + d] = sum;
+            }
+        }
+    }
 }
 
 fn mlp(
